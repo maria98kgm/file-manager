@@ -16,17 +16,20 @@ export function moveUp() {
 }
 
 export function changeDir(args) {
-  const path = args.join(" ");
-  const fullPath = resolve(path);
+  if (args.length === 0) displayError("invalid_input");
+  else {
+    const path = args.join(" ");
+    const fullPath = resolve(path);
 
-  access(fullPath, (err) => {
-    if (!err) {
-      chdir(fullPath);
-      displayCurrentDirectory(fullPath);
-    } else {
-      displayError("invalid_input");
-    }
-  });
+    access(fullPath, (err) => {
+      if (!err) {
+        chdir(fullPath);
+        displayCurrentDirectory(fullPath);
+      } else {
+        displayError("invalid_input");
+      }
+    });
+  }
 }
 
 export function displayDirContent() {
