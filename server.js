@@ -1,7 +1,15 @@
 import { homedir } from "os";
 import { chdir, cwd } from "process";
 import { resolve, join } from "path";
-import { access, readdir } from "fs";
+import {
+  promises as fsPromises,
+  access,
+  createReadStream,
+  createWriteStream,
+  open,
+  readdir,
+  rename,
+} from "fs";
 
 const userHomeDir = homedir();
 chdir(userHomeDir);
@@ -18,16 +26,13 @@ process.on("exit", () => console.log(`Thank you for using File Manager, ${userna
 process.on("SIGINT", () => {
   process.exit();
 });
-// process.on("message", (message) => {
-//   if (message.type === "invalid_input") {
-//     console.log("Invalid input");
-//   } else if (message.type === "operation_failed") {
-//     console.log("Operation failed");
-//   }
-// });
 
 process.stdin.on("data", (input) => {
   const command = input.toString().replaceAll(/\s+/g, " ");
+  const args = command
+    .split(" ")
+    .slice(1)
+    .filter((item) => item !== "");
 
   if (command.startsWith("up")) {
     const upPath = join(cwd(), "../");
@@ -40,7 +45,7 @@ process.stdin.on("data", (input) => {
       displayCurrentDirectory(upPath);
     }
   } else if (command.startsWith("cd")) {
-    const path = command.split(" ")[1];
+    const path = args.join(" ");
     const fullPath = resolve(path);
 
     access(fullPath, (err) => {
@@ -61,7 +66,122 @@ process.stdin.on("data", (input) => {
       );
 
       console.table(tableData);
+      displayCurrentDirectory(currentDir);
     });
+  } else if (command.startsWith("cat")) {
+    if (!args[0]) displayError("operation_failed");
+    else {
+      const filePath = resolve(args.join(" "));
+
+      access(filePath, (err) => {
+        if (err) displayError("operation_failed");
+        else {
+          const readStream = createReadStream(filePath, "utf-8");
+          readStream
+            .on("data", (data) => console.log(data))
+            .on("end", () => displayCurrentDirectory(cwd()));
+        }
+      });
+    }
+  } else if (command.startsWith("add")) {
+    if (!args[0]) displayError("operation_failed");
+    else {
+      const filePath = resolve(args.join(" "));
+
+      open(filePath, "w", (err) => {
+        if (err) displayError("operation_failed");
+        else displayCurrentDirectory(cwd());
+      });
+    }
+  } else if (command.startsWith("rn")) {
+    if (!args[0]) displayError("operation_failed");
+    else {
+      const filePathRn = resolve(cwd(), args[0]);
+      const filePathRnTo = resolve(cwd(), args[1]);
+
+      rename(filePathRn, filePathRnTo, (err) => {
+        if (err) displayError("operation_failed");
+        displayCurrentDirectory(cwd());
+      });
+    }
+  } else if (command.startsWith("cp")) {
+    if (!args[0]) displayError("operation_failed");
+    else {
+      const filePathCp = resolve(args[0]);
+      const dirPathCpTo = resolve(args[1]);
+      const filePathCpTo = join(dirPathCpTo, args[0]);
+
+      fsPromises
+        .access(filePathCp)
+        .then(() => fsPromises.access(dirPathCpTo))
+        .then(() =>
+          fsPromises
+            .access(filePathCpTo)
+            .then((err) => {
+              if (!err) throw "exists";
+            })
+            .catch((err) => {
+              if (err === "exists") throw new Error("");
+            })
+        )
+        .then(() => {
+          const filePathCpTo = join(dirPathCpTo, args[0]);
+          const readStream = createReadStream(filePathCp);
+          const writeStream = createWriteStream(filePathCpTo, { flags: "w" });
+
+          readStream.on("error", () => displayError("operation_failed"));
+          writeStream.on("error", (err) => displayError("operation_failed"));
+          writeStream.on("finish", () => displayCurrentDirectory(cwd()));
+
+          readStream.pipe(writeStream);
+        })
+        .catch((err) => displayError("operation_failed"));
+    }
+  } else if (command.startsWith("mv")) {
+    if (!args[0]) displayError("operation_failed");
+    else {
+      const filePathCp = resolve(join(cwd(), args[0]));
+      const dirPathCpTo = resolve(join(cwd(), args[1]));
+      const filePathCpTo = join(dirPathCpTo, args[0]);
+
+      fsPromises
+        .access(filePathCp)
+        .then(() => fsPromises.access(dirPathCpTo))
+        .then(() =>
+          fsPromises
+            .access(filePathCpTo)
+            .then((err) => {
+              if (!err) throw "exists";
+            })
+            .catch((err) => {
+              if (err === "exists") throw new Error("");
+            })
+        )
+        .then(() => {
+          const filePathCpTo = join(dirPathCpTo, args[0]);
+          const readStream = createReadStream(filePathCp);
+          const writeStream = createWriteStream(filePathCpTo, { flags: "w" });
+
+          readStream.on("error", () => displayError("operation_failed"));
+          writeStream.on("error", () => displayError("operation_failed"));
+          writeStream.on("finish", () => {
+            fsPromises
+              .unlink(filePathCp)
+              .then(() => displayCurrentDirectory(cwd()))
+              .catch(() => displayError("operation_failed"));
+          });
+
+          readStream.pipe(writeStream);
+        })
+        .catch(() => displayError("operation_failed"));
+    }
+  } else if (command.startsWith("rm")) {
+    const fullPath = resolve(join(cwd(), args.join(" ")));
+
+    fsPromises
+      .unlink(fullPath)
+      .then(() => displayCurrentDirectory(cwd()))
+      .catch(() => displayError("operation_failed"));
   }
 });
 
