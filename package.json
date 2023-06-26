@@ -1,6 +1,7 @@
 {
   "name": "file-manager",
   "version": "1.0.0",
+  "type": "module",
   "description": "File manager implementation",
   "main": "server.js",
   "scripts": {
