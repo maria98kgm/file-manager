@@ -11,7 +11,7 @@ import {
 import { displayCurrentDirectory, displayError } from "./log.js";
 
 export function readFile(args) {
-  if (!args[0]) displayError("operation_failed");
+  if (!args[0]) displayError("invalid_input");
   else {
     const filePath = resolve(args.join(" "));
 
@@ -28,7 +28,7 @@ export function readFile(args) {
 }
 
 export function createFile(args) {
-  if (!args[0]) displayError("operation_failed");
+  if (!args[0]) displayError("invalid_input");
   else {
     const filePath = resolve(args.join(" "));
 
@@ -40,64 +40,70 @@ export function createFile(args) {
 }
 
 export function renameFile(args) {
-  if (!args[0]) displayError("operation_failed");
+  if (args.length < 2) displayError("invalid_input");
   else {
     const filePathRn = resolve(cwd(), args[0]);
     const filePathRnTo = resolve(cwd(), args[1]);
 
     rename(filePathRn, filePathRnTo, (err) => {
       if (err) displayError("operation_failed");
-      displayCurrentDirectory(cwd());
+      else displayCurrentDirectory(cwd());
     });
   }
 }
 
 export function copyFile(args, deleteCopiedFile) {
-  const filePathCp = resolve(join(cwd(), args[0]));
-  const dirPathCpTo = resolve(join(cwd(), args[1]));
-  const filePathCpTo = join(dirPathCpTo, args[0]);
+  if (args.length < 2) displayError("invalid_input");
+  else {
+    const filePathCp = resolve(join(cwd(), args[0]));
+    const dirPathCpTo = resolve(join(cwd(), args[1]));
+    const filePathCpTo = join(dirPathCpTo, args[0]);
 
-  fsPromises
-    .access(filePathCp)
-    .then(() => fsPromises.access(dirPathCpTo))
-    .then(() =>
-      fsPromises
-        .access(filePathCpTo)
-        .then((err) => {
-          if (!err) throw "exists";
-        })
-        .catch((err) => {
-          if (err === "exists") throw new Error("");
-        })
-    )
-    .then(() => {
-      const filePathCpTo = join(dirPathCpTo, args[0]);
-      const readStream = createReadStream(filePathCp);
-      const writeStream = createWriteStream(filePathCpTo, { flags: "w" });
+    fsPromises
+      .access(filePathCp)
+      .then(() => fsPromises.access(dirPathCpTo))
+      .then(() =>
+        fsPromises
+          .access(filePathCpTo)
+          .then((err) => {
+            if (!err) throw "exists";
+          })
+          .catch((err) => {
+            if (err === "exists") throw new Error("");
+          })
+      )
+      .then(() => {
+        const filePathCpTo = join(dirPathCpTo, args[0]);
+        const readStream = createReadStream(filePathCp);
+        const writeStream = createWriteStream(filePathCpTo, { flags: "w" });
 
-      readStream.on("error", () => displayError("operation_failed"));
-      writeStream.on("error", () => displayError("operation_failed"));
-      writeStream.on("finish", () => {
-        if (deleteCopiedFile) {
-          fsPromises
-            .rm(filePathCp)
-            .then(() => displayCurrentDirectory(cwd()))
-            .catch(() => displayError("operation_failed"));
-        } else {
-          displayCurrentDirectory(cwd());
-        }
-      });
+        readStream.on("error", () => displayError("operation_failed"));
+        writeStream.on("error", () => displayError("operation_failed"));
+        writeStream.on("finish", () => {
+          if (deleteCopiedFile) {
+            fsPromises
+              .rm(filePathCp)
+              .then(() => displayCurrentDirectory(cwd()))
+              .catch(() => displayError("operation_failed"));
+          } else {
+            displayCurrentDirectory(cwd());
+          }
+        });
 
-      readStream.pipe(writeStream);
-    })
-    .catch(() => displayError("operation_failed"));
+        readStream.pipe(writeStream);
+      })
+      .catch(() => displayError("operation_failed"));
+  }
 }
 
 export function removeFile(args) {
-  const fullPath = resolve(join(cwd(), args.join(" ")));
+  if (args.length < 2) displayError("invalid_input");
+  else {
+    const fullPath = resolve(join(cwd(), args.join(" ")));
 
-  fsPromises
-    .rm(fullPath)
-    .then(() => displayCurrentDirectory(cwd()))
-    .catch(() => displayError("operation_failed"));
+    fsPromises
+      .rm(fullPath)
+      .then(() => displayCurrentDirectory(cwd()))
+      .catch(() => displayError("operation_failed"));
+  }
 }

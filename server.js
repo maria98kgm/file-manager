@@ -40,4 +40,5 @@ process.stdin.on("data", (input) => {
   else if (command.startsWith("rm")) removeFile(args);
   else if (command.startsWith("os")) getOsInfo(args[0]);
   else if (command.startsWith("hash")) calculateHash(args.join(" "));
+  else displayError("invalid_input");
 });
