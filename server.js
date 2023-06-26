@@ -4,6 +4,7 @@ import { changeDir, displayDirContent, moveUp } from "./nwd.js";
 import { displayCurrentDirectory, displayError } from "./log.js";
 import { createFile, removeFile, renameFile, copyFile, readFile } from "./file-operations.js";
 import { getOsInfo } from "./os.js";
+import { calculateHash } from "./hash.js";
 
 const userHomeDir = homedir();
 chdir(userHomeDir);
@@ -38,4 +39,5 @@ process.stdin.on("data", (input) => {
   else if (command.startsWith("mv")) copyFile(args, true);
   else if (command.startsWith("rm")) removeFile(args);
   else if (command.startsWith("os")) getOsInfo(args[0]);
+  else if (command.startsWith("hash")) calculateHash(args.join(" "));
 });
